@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laporan Kehadiran Harian Murid STS</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f7faff; margin: 0; padding: 20px; color: #003366; }
+  h1 { text-align: center; color: #004a99; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+  th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+  th { background: #eaf1ff; }
+  input { width: 90%; padding: 4px; border: 1px solid #ccd; border-radius: 4px; }
+  button { background: #0078d4; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  button:hover { background: #005fa3; }
+  #statusMsg { margin-top: 10px; text-align: center; font-weight: bold; color: #004a99; }
+</style>
+</head>
+<body>
+
+<h1>Laporan Kehadiran Harian Murid STS</h1>
+<p id="statusMsg">Memuat data...</p>
+
+<table id="jadualKehadiran">
+  <thead>
+    <tr>
+      <th>KELAS</th>
+      <th>NAMA PENGISI</th>
+      <th>BIL. HADIR</th>
+      <th>JUMLAH MURID</th>
+      <th>CATATAN</th>
+      <th>TINDAKAN</th>
+    </tr>
+  </thead>
+  <tbody id="tbodyKehadiran"></tbody>
+</table>
+
+<script>
+const GOOGLE_WEBAPP_URL = "https://script.google.com/macros/s/AKfycby8lldbZZLhl_aYrXAWUbf_ZPTv1-k6w1I6Ij1M1HI5E_sqVudgvcJLyx2iutVRXX8w/exec"; // <<--- Gantikan di sini
+
+const senaraiKelas = [
+"1CEMPAKA","1KAA","1KENANGA","1MAWAR","1ORKID","1SEROJA",
+"2CEMPAKA","2KAA","2KENANGA","2MAWAR","2ORKID","2SEROJA",
+"3CEMPAKA","3KAA","3KENANGA","3MAWAR","3ORKID","3SEROJA",
+"4AKAUN","4SAINS","4SENI 1","4SENI 2","4SENI 3","4TSWR",
+"5AKAUN","5SAINS","5SENI 1","5SENI 2","5SENI 3","5TSWR",
+"L6A1","L6A2","L6A3","L6A4","L6S1","L6S2","L6S3",
+"U6A1","U6A2","U6A3","U6A4","U6S1","U6S2","U6S3"
+];
+
+async function loadData() {
+  const status = document.getElementById("statusMsg");
+  try {
+    const res = await fetch(GOOGLE_WEBAPP_URL);
+    const text = await res.text();
+    let data = [];
+    try { data = JSON.parse(text); } catch(e){ status.textContent = "Gagal baca data: " + text; return; }
+
+    const tbody = document.getElementById("tbodyKehadiran");
+    tbody.innerHTML = "";
+    senaraiKelas.forEach(kelas => {
+      const row = data.find(r => r["KELAS"] === kelas) || {};
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${kelas}</td>
+        <td><input class="pengisi" data-kelas="${kelas}" value="${row["NAMA PENGISI"] || ""}"></td>
+        <td><input class="hadir" data-kelas="${kelas}" value="${row["BIL. HADIR"] || ""}"></td>
+        <td><input class="jumlah" data-kelas="${kelas}" value="${row["JUMLAH MURID"] || ""}"></td>
+        <td><input class="catatan" data-kelas="${kelas}" value="${row["CATATAN"] || ""}"></td>
+        <td><button onclick="simpanData('${kelas}', this)">Simpan</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    status.textContent = "✅ Data dimuat dari Google Sheet.";
+  } catch (err) {
+    status.textContent = "❌ Ralat muat data: " + err;
+  }
+}
+
+async function simpanData(kelas, btn) {
+  btn.disabled = true;
+  btn.textContent = "Simpan...";
+  const pengisi = document.querySelector(`.pengisi[data-kelas='${kelas}']`).value;
+  const hadir = document.querySelector(`.hadir[data-kelas='${kelas}']`).value;
+  const jumlah = document.querySelector(`.jumlah[data-kelas='${kelas}']`).value;
+  const catatan = document.querySelector(`.catatan[data-kelas='${kelas}']`).value;
+  const data = { kelas, pengisi, hadir, jumlah, catatan };
+
+  try {
+    const res = await fetch(GOOGLE_WEBAPP_URL, {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: { "Content-Type": "application/json" },
+    });
+    const result = await res.json();
+    alert(result.message || "Disimpan!");
+  } catch (err) {
+    alert("❌ Ralat: " + err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Simpan";
+  }
+}
+
+window.onload = loadData;
+</script>
+
+</body>
+</html>
